@@ -1,0 +1,44 @@
+#!/bin/sh
+check(){
+  if [ -f "$1" ]; then
+    local SKIP=`sed -n '3p' "$1"`
+    [[ "$SKIP" = SKIP=* ]] || return 1
+    local SKIP=${SKIP#*=}
+    local base64data=`tail -n +$SKIP "$1"`
+    if echo $base64data | base64 -d > /dev/null; then
+      return 0
+    else
+      return 1
+    fi
+  else
+    return 1
+  fi
+}
+decrypt(){
+  if check "$1"; then
+    cd `dirname $1`
+    mkdir $2 2> /dev/null
+    [ -d $2 ] || return 1
+    local SKIP=`sed -n '3p' "$1"`
+    local SKIP=${SKIP#*=}
+    local base64data=`tail -n +$SKIP "$1"`
+    echo "$base64data" | base64 -d > tmp.tar.gz
+    tar -xzvf tmp.tar.gz -C $2 > /dev/null
+    rm -rf tmp.tar.gz
+  else
+    return 1
+  fi
+}
+if [[ `basename $0` = "buzexe_tool" ]]; then
+  if [[ "$1" = "-d" ]] || [[ "$1" = "--decrypt" ]] || [[ "$1" = "decrypt" ]]; then
+    if [ ! $3 ]; then
+      exit 1
+    else
+      decrypt $2 $3
+    fi
+  elif [[ "$1" = "--check" ]] || [ "$1" = "check" ]; then
+    check $2
+  else
+    exit 1
+  fi
+fi
